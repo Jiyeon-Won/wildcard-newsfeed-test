@@ -5,6 +5,7 @@ import com.sparta.wildcard_newsfeed.domain.user.dto.*;
 import com.sparta.wildcard_newsfeed.domain.user.entity.AuthCodeHistory;
 import com.sparta.wildcard_newsfeed.domain.user.entity.User;
 import com.sparta.wildcard_newsfeed.domain.user.entity.UserStatusEnum;
+import com.sparta.wildcard_newsfeed.domain.user.repository.AuthCodeRepository;
 import com.sparta.wildcard_newsfeed.domain.user.repository.UserRepository;
 import com.sparta.wildcard_newsfeed.exception.customexception.UserNotFoundException;
 import com.sparta.wildcard_newsfeed.security.AuthenticationUser;
@@ -16,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 import static com.sparta.wildcard_newsfeed.domain.user.dto.emailtemplate.EmailTemplate.AUTH_EMAIL;
 
@@ -26,9 +29,12 @@ import static com.sparta.wildcard_newsfeed.domain.user.dto.emailtemplate.EmailTe
 public class UserService {
     private final UserRepository userRepository;
     private final AuthCodeService authCodeService;
+    private final AuthCodeRepository authCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final FileService fileService;
+
+    private static final Long MAX_EXPIRE_TIME = 180L;
 
     @Transactional
     public UserSignupResponseDto signup(UserSignupRequestDto requestDto) {
@@ -44,7 +50,12 @@ public class UserService {
         User user = userRepository.save(new User(usercode, pwd, email));
 
         //autocode 생성 및 등록
-        AuthCodeHistory authCodeHistory = authCodeService.addAuthCode(user);
+        AuthCodeHistory authCodeHistory = AuthCodeHistory.builder()
+                .user(user)
+                .autoCode(createAuthCode())
+                .expireDate(LocalDateTime.now().plusSeconds(MAX_EXPIRE_TIME))
+                .build();
+        authCodeRepository.save(authCodeHistory);
 
         //메일 생성 후 전송
         eventPublisher.publishEvent(EmailSendEvent.of(AUTH_EMAIL.getSub(), AUTH_EMAIL.formatBody(authCodeHistory.getAutoCode()), user.getEmail()));
@@ -135,14 +146,6 @@ public class UserService {
     }
 
     @Transactional
-    public void verifyAuthCode(AuthenticationUser loginUser, UserEmailRequestDto requestDto) {
-        User findUser = userRepository.findByUsercode(loginUser.getUsername()).orElseThrow(UserNotFoundException::new);
-
-        authCodeService.findByAutoCode(findUser, requestDto.getAuthCode());
-        findUser.updateUserStatus();
-    }
-
-    @Transactional
     public String uploadProfileImage(AuthenticationUser loginUser, Long userId, MultipartFile file) {
         User findUser = userRepository.findByUsercode(loginUser.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
@@ -156,5 +159,12 @@ public class UserService {
         findUser.setProfileImageUrl(s3Url);
 
         return s3Url;
+    }
+
+    /**
+     * Auto 생성
+     */
+    private String createAuthCode() {
+        return UUID.randomUUID().toString();
     }
 }

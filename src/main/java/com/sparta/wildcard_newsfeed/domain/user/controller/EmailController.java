@@ -3,6 +3,7 @@ package com.sparta.wildcard_newsfeed.domain.user.controller;
 import com.sparta.wildcard_newsfeed.domain.common.CommonResponseDto;
 import com.sparta.wildcard_newsfeed.domain.post.dto.PostResponseDto;
 import com.sparta.wildcard_newsfeed.domain.user.dto.UserEmailRequestDto;
+import com.sparta.wildcard_newsfeed.domain.user.service.AuthCodeService;
 import com.sparta.wildcard_newsfeed.domain.user.service.UserService;
 import com.sparta.wildcard_newsfeed.security.AuthenticationUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Email 컨트롤러", description = "email API")
 public class EmailController {
 
-    private final UserService userService;
+    private final AuthCodeService authCodeService;
 
     @PostMapping("/verify")
     @Operation(summary = "이메일 인증")
@@ -42,7 +43,7 @@ public class EmailController {
             @AuthenticationPrincipal AuthenticationUser loginUser,
             @Valid @RequestBody UserEmailRequestDto requestDto
     ) {
-        userService.verifyAuthCode(loginUser, requestDto);
+        authCodeService.verifyAuthCode(loginUser, requestDto);
 
         return ResponseEntity.ok()
                 .body(CommonResponseDto.<PostResponseDto>builder()

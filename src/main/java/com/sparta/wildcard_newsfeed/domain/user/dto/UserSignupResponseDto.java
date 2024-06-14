@@ -1,11 +1,11 @@
 package com.sparta.wildcard_newsfeed.domain.user.dto;
 
 import com.sparta.wildcard_newsfeed.domain.user.entity.User;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Getter
-@NoArgsConstructor
+@Builder
+@AllArgsConstructor
 public class UserSignupResponseDto {
     private String usercode;
     private String email;
@@ -14,4 +14,12 @@ public class UserSignupResponseDto {
         usercode = user.getUsercode();
         email = user.getEmail();
     }
+
+    public static UserSignupResponseDto of(User user) {
+        return UserSignupResponseDto.builder()
+                .usercode(user.getUsercode())
+                .email(user.getEmail())
+                .build();
+    }
+
 }
