@@ -4,246 +4,223 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
 import static com.sparta.wildcard_newsfeed.exception.validation.ValidationGroups.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DisplayName("회원가입 DTO 검증")
 class UserSignupRequestDtoTest {
 
-    private static Validator validator;
+    final String usercode = "testId1234";
+    final String password = "currentPWD999!";
+    final String email = "test@gmail.com";
 
-    @BeforeAll
-    public static void init() {
+    private Validator validator;
+
+    @BeforeEach
+    public void setUp() {
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();
     }
 
     @Test
-    @DisplayName("회원가입_성공")
-    void singup_success() {
+    public void validSignupRequestDto() {
         // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
-                .password("currentPWD12@@")
-                .email("test@gmail.com")
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                .usercode(usercode)
+                .password(password)
+                .email(email)
                 .build();
 
         // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto);
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto);
 
         // then
-        assertThat(violations).isEmpty();
+        assertTrue(validate.isEmpty());
     }
 
-    /**
-     * 아이디 검증
-     * test1_1 아이디 미입력
-     * test1_2 아이디 입력 길이 조건 미달
-     * test1_3 아이디 입력 조건 미달
-     */
     @Test
-    @DisplayName("회원가입_실패 - 아이디_미입력")
-    void test1_1() {
+    public void invalidUsercodePattern() {
         // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                .usercode("qwerasdf!@#$")
+                .password(password)
+                .email(email)
+                .build();
+
+        // when
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, PatternGroup.class);
+
+        // then
+        assertThat(validate.size()).isEqualTo(1);
+        assertThat(validate.iterator().next().getMessage()).isEqualTo("대소문자 포함 영문 + 숫자만 입력해 주세요");
+    }
+
+    @Test
+    public void invalidUsercodeLength() {
+        // given - 짧을 때
+        UserSignupRequestDto shortDto = UserSignupRequestDto.builder()
+                .usercode("short")
+                .password(password)
+                .email(email)
+                .build();
+        // given - 길 때
+        UserSignupRequestDto longDto = UserSignupRequestDto.builder()
+                .usercode("longlonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglonglong")
+                .password(password)
+                .email(email)
+                .build();
+
+        // when - 짧을 때
+        Set<ConstraintViolation<UserSignupRequestDto>> shortValidate = validator.validate(shortDto, SizeGroup.class);
+        // when - 길 때
+        Set<ConstraintViolation<UserSignupRequestDto>> longValidate = validator.validate(longDto, SizeGroup.class);
+
+        // then - 짧을 때
+        assertThat(shortValidate.size()).isEqualTo(1);
+        assertThat(shortValidate.iterator().next().getMessage()).isEqualTo("최소 10자 이상, 20자 이하로 입력해 주세요");
+        // then - 길 때
+        assertThat(longValidate.size()).isEqualTo(1);
+        assertThat(longValidate.iterator().next().getMessage()).isEqualTo("최소 10자 이상, 20자 이하로 입력해 주세요");
+    }
+
+    @Test
+    public void blankUsercode() {
+        // given
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
                 .usercode("")
-                .password("currentPWD12@@")
-                .email("test@gmail.com")
+                .password(password)
+                .email(email)
                 .build();
 
         // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, NotBlankGroup.class);
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, NotBlankGroup.class);
 
         // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("아이디를 작성해주세요", violation.getMessage());
-        }
+        assertThat(validate).hasSize(1);
+        assertThat(validate.iterator().next().getMessage()).isEqualTo("아이디를 작성해주세요");
     }
 
     @Test
-    @DisplayName("회원가입_실패 - 아이디 입력 길이 조건 미달")
-    void test1_2() {
+    public void invalidPasswordPattern() {
         // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("11")
-                .password("currentPWD12@@")
-                .email("test@gmail.com")
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                .usercode(usercode)
+                .password("invalidPasswordPattern")
+                .email(email)
                 .build();
 
         // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, SizeGroup.class);
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, PatternGroup.class);
 
         // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("최소 10자 이상, 20자 이하로 입력해 주세요", violation.getMessage());
-        }
+        assertThat(validate).hasSize(1);
+        assertThat(validate.iterator().next().getMessage()).isEqualTo("비밀번호는 대소문자 포함 영문 + 숫자 + 특수문자를 최소 1글자씩 포함해 주세요");
     }
 
     @Test
-    @DisplayName("회원가입_실패 - 아이디 입력 조건 미달")
-    void test1_3() {
-        // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("@@")
-                .password("currentPWD12@@")
-                .email("test@gmail.com")
+    public void invalidPasswordLength() {
+        // given - 짧을 때
+        UserSignupRequestDto shortDto = UserSignupRequestDto.builder()
+                .usercode(usercode)
+                .password("short")
+                .email(email)
                 .build();
 
-        // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, PatternGroup.class);
+        // when - 짧을 때
+        Set<ConstraintViolation<UserSignupRequestDto>> shortValidate = validator.validate(shortDto, SizeGroup.class);
 
-        // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("대소문자 포함 영문 + 숫자만 입력해 주세요", violation.getMessage());
-        }
+        // then - 짧을 때
+        assertThat(shortValidate).hasSize(1);
+        assertThat(shortValidate.iterator().next().getMessage()).isEqualTo("최소 10자 이상 입력해 주세요");
     }
 
-
-    /**
-     * 비밀번호 검증
-     * test2_1 비밀번호 미입력
-     * test2_2 비밀번호 입력 길이 조건 미달
-     * test2_3 비밀번호 입력 조건 미달
-     */
     @Test
-    @DisplayName("회원가입_실패 - 비밀번호_미입력")
-    void test2_1() {
+    public void blankPassword() {
         // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                .usercode(usercode)
                 .password("")
-                .email("test@gmail.com")
+                .email(email)
                 .build();
 
         // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, NotBlankGroup.class);
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, NotBlankGroup.class);
 
         // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("비밀번호를 작성해주세요", violation.getMessage());
+        assertThat(validate).hasSize(1);
+        assertThat(validate.iterator().next().getMessage()).isEqualTo("비밀번호를 작성해주세요");
+    }
+
+    @Test
+    public void invalidEmailPattern() {
+        // 유효하지 않은 이메일
+        String[] invalidEmails = {
+                "plainaddress",
+                "@missingusername.com",
+                "user.name@.missingdomain.com",
+                "username@missingtld.",
+                "username@invalid-.com",
+                "username@.com",
+                "user.name@domain..com",
+                "user@.domain.com",
+                "user@domain_com",
+                "user@domain,com"
+        };
+
+        // 유효하지 않은 이메일 테스트
+        for (String email : invalidEmails) {
+            // given
+            UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                    .usercode(usercode)
+                    .password(password)
+                    .email(email)
+                    .build();
+
+            // when
+            Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, PatternGroup.class);
+
+            // then
+            assertThat(validate).describedAs("유효하지 않은 이메일 테스트 실패: " + email).hasSize(1);
+            assertThat(validate.iterator().next().getMessage()).isEqualTo("이메일 형식에 맞지 않습니다.");
         }
     }
 
     @Test
-    @DisplayName("회원가입_실패 - 비밀번호 입력 길이 조건 미달")
-    void test2_2() {
+    public void invalidEmailLength() {
         // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
-                .password("1")
-                .email("test@gmail.com")
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                .usercode(usercode)
+                .password(password)
+                .email("a".repeat(246) + "@gmail.com") // 255 초과
                 .build();
 
         // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, SizeGroup.class);
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, SizeGroup.class);
 
         // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("최소 10자 이상 입력해 주세요", violation.getMessage());
-        }
+        assertThat(validate).hasSize(1);
+        assertThat(validate.iterator().next().getMessage()).isEqualTo("이메일 입력 범위를 초과하였습니다.");
     }
 
     @Test
-    @DisplayName("회원가입_실패 - 비밀번호 입력 조건 미달")
-    void test2_3() {
+    public void blankEmail() {
         // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
-                .password("abcd")
-                .email("test@gmail.com")
-                .build();
-
-        // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, PatternGroup.class);
-
-        // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("비밀번호는 대소문자 포함 영문 + 숫자 + 특수문자를 최소 1글자씩 포함해 주세요", violation.getMessage());
-        }
-    }
-
-    /**
-     * 이메일 검증
-     * test3_1 이메일 미입력
-     * test3_2 이메일 입력 길이 조건 미달
-     * test3_3 이메일 입력 조건 미달
-     */
-    @Test
-    @DisplayName("회원가입_실패 - 이메일_미입력")
-    void test3_1() {
-        // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
-                .password("currentPWD12@@")
+        UserSignupRequestDto dto = UserSignupRequestDto.builder()
+                .usercode(usercode)
+                .password(password)
                 .email("")
                 .build();
 
         // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, NotBlankGroup.class);
+        Set<ConstraintViolation<UserSignupRequestDto>> validate = validator.validate(dto, NotBlankGroup.class);
 
         // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("이메일을 입력해주세요.", violation.getMessage());
-        }
+        assertThat(validate).hasSize(1);
+        assertThat(validate.iterator().next().getMessage()).isEqualTo("이메일을 입력해주세요.");
     }
-
-    @Test
-    @DisplayName("회원가입_실패 - 이메일 입력 길이 조건 미달")
-    void test3_2() {
-        // given
-        StringBuilder email = new StringBuilder();
-        for (int i = 1; i <= 150; i++) {
-            email.append(i);
-        }
-
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
-                .password("currentPWD12@@")
-                .email(email.toString())
-                .build();
-        // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, SizeGroup.class);
-
-        // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("이메일 입력 범위를 초과하였습니다.", violation.getMessage());
-        }
-    }
-
-    @Test
-    @DisplayName("회원가입_실패 - 이메일 입력 조건 미달")
-    void test3_3() {
-        // given
-        UserSignupRequestDto requestDto = UserSignupRequestDto.builder()
-                .usercode("testUser1234")
-                .password("currentPWD12@@")
-                .email("111111")
-                .build();
-
-        // when
-        Set<ConstraintViolation<UserSignupRequestDto>> violations = validator.validate(requestDto, PatternGroup.class);
-
-        // then
-        assertThat(violations).isNotEmpty();
-        for (ConstraintViolation<UserSignupRequestDto> violation : violations) {
-            assertEquals("이메일 형식에 맞지 않습니다.", violation.getMessage());
-        }
-    }
-
-
 }
