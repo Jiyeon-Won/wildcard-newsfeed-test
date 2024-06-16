@@ -37,7 +37,6 @@ public class PostController {
 
     private final PostService postService;
     private final CommentService commentService;
-    private final PostRepository postRepository;
 
     // 게시물 등록
     @PostMapping
@@ -155,7 +154,9 @@ public class PostController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = CommonResponseDto.class)))
     })
-    public ResponseEntity<CommonResponseDto<Page<PostPageResponseDto>>> getPostPage(@Valid @RequestBody PostPageRequestDto requestDto) {
+    public ResponseEntity<CommonResponseDto<Page<PostPageResponseDto>>> getPostPage(
+            @Valid @RequestBody PostPageRequestDto requestDto
+    ) {
         Page<PostPageResponseDto> page = postService.getPostPage(requestDto);
         return ResponseEntity.ok()
                 .body(CommonResponseDto.<Page<PostPageResponseDto>>builder()

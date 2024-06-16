@@ -46,8 +46,10 @@ public class AuthenticationUser implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (userRoleEnum == null) {
+            throw new IllegalStateException("UserRoleEnum is null");
+        }
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + userRoleEnum.getRoleValue()));
-
     }
 
     @Override
